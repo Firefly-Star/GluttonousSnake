@@ -1,0 +1,7 @@
+.vs/
+.git/
+*.sln
+*.vcxproj
+*.filters
+bin/
+obj/
