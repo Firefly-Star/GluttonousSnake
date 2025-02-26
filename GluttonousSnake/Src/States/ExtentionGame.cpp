@@ -1,34 +1,40 @@
-#include <random>
-#include <algorithm>
-#include <vector>
+#include "ExtentionGame.h"
 
 #include "Application.h"
-#include "Core/Tool.h"
-
-#include "Game.h"
 #include "Menu.h"
 
-static const std::string rule =
-"暂停中\n\n"
-"WASD 上下左右\n"
-"P 暂停\n"
-"C 继续游戏\n"
-"R 重新开始\n"
-"esc 返回菜单\n"
-"蛇头吃到果实则加分\n"
-"蛇头撞到身体或墙游戏结束\n";
+#include <random>
 
-Game::Game(int mapWidth, int mapHeight)
-	:m_Border(mapWidth, mapHeight, "墙", { 0, 0 }), m_Snake(Coord{ mapWidth / 2, mapHeight / 2 }, Direction::Up, 6),
-	m_State(GameState::Playing), m_Board(10, 10, Coord{ 4 + mapWidth, 0 }, "计分板: " + std::to_string(6)),
-	m_Rule(14, 14, Coord{ 2 + mapWidth, 10 }, rule, " "),
-	m_LeaderBoard("C:/Users/Summer/Desktop/ProgramDesign/LeaderBoard.txt", 10, 20, Coord{16 + mapWidth, 0}, "", "榜")
+ExtentionGame1::ExtentionGame1(int mapWidth, int mapHeight)
+	:Game(mapWidth, mapHeight)
 {
-	m_Board.Show();
-	m_Rule.Hide();
+	std::random_device rd;
+	std::mt19937 gen(rd());
+	std::uniform_int_distribution<int> xDist(1, mapWidth - 2);
+	std::uniform_int_distribution<int> yDist(1, mapHeight - 2);
+
+	for (int i = 0; i < 10; ++i)
+	{
+		bool stopped = false;
+		Coord c;
+		while (!stopped)
+		{
+			stopped = true;
+			c = { xDist(gen), yDist(gen) };
+			for (auto const& wall : m_Walls)
+			{
+				if (wall.GetPosition() == c)
+				{
+					stopped = false;
+					break;
+				}
+			}
+		}
+		m_Walls.emplace_back(Wall(c));
+	}
 }
 
-void Game::OnEvent(Event& event)
+void ExtentionGame1::OnEvent(Event& event)
 {
 	switch (m_State)
 	{
@@ -40,7 +46,7 @@ void Game::OnEvent(Event& event)
 		dispatcher.Dispatch<KeyPressedEvent>([this](KeyPressedEvent& event) {
 			switch (event.GetKeyCode())
 			{
-			case VK_ESCAPE: 
+			case VK_ESCAPE:
 			{
 				ClearScreen();
 				Application::GetInstance().SetState(new Menu());
@@ -64,7 +70,7 @@ void Game::OnEvent(Event& event)
 			case 'R':
 			{
 				ClearScreen();
-				Application::GetInstance().SetState(new Game(30, 20));
+				Application::GetInstance().SetState(new ExtentionGame1(30, 20));
 				break;
 			}
 			case 'C':
@@ -92,7 +98,7 @@ void Game::OnEvent(Event& event)
 			case 'R':
 			{
 				ClearScreen();
-				Application::GetInstance().SetState(new Game(30, 20));
+				Application::GetInstance().SetState(new ExtentionGame1(30, 20));
 				break;
 			}
 			case VK_ESCAPE:
@@ -110,58 +116,7 @@ void Game::OnEvent(Event& event)
 
 static const float FruitProbability = 1.0f / 20.0f;
 
-void Game::Update()
-{
-	switch (m_State)
-	{
-	case GameState::Playing:
-	{
-		if (m_Fruits.size() <= 5 && Probility(FruitProbability))
-		{
-			GenFruit();
-		}
-		JudgeEat();
-		JudgeDead();
-		m_Snake.Update();
-		break;
-	}
-	case GameState::Stopped:
-	{
-		break;
-	}
-	case GameState::Terminal:
-	{
-		break;
-	}
-	}
-}
-
-void Game::Render()
-{
-	m_LeaderBoard.Render();
-	switch (m_State)
-	{
-	case GameState::Playing:
-	{
-		m_Snake.Render();
-		m_Board.Render();
-		m_Rule.Render();
-		break;
-	}
-	case GameState::Stopped:
-	{
-		m_Rule.Render();
-		break;
-	}
-	case GameState::Terminal:
-	{
-		break;
-	}
-	}
-	
-}
-
-void Game::GenFruit()
+void ExtentionGame1::GenFruit()
 {
 	static const int width = m_Border.GetWidth();
 	static const int height = m_Border.GetHeight();
@@ -171,7 +126,7 @@ void Game::GenFruit()
 	static std::uniform_int_distribution<int> xDist(1 + m_Border.GetPosition().x, width - 2 + m_Border.GetPosition().y);
 	static std::uniform_int_distribution<int> yDist(1 + m_Border.GetPosition().x, height - 2 + m_Border.GetPosition().y);
 	static std::uniform_int_distribution<int> scoreDist(1, 5);
-	
+
 	bool choosing = true;
 	Coord c;
 	while (choosing)
@@ -179,7 +134,7 @@ void Game::GenFruit()
 		choosing = false;
 		c.x = xDist(gen);
 		c.y = yDist(gen);
-		
+
 		if (std::find_if(m_Snake.GetBody().begin(), m_Snake.GetBody().end(), [c](Coord const& seg) {
 			return seg == c;
 			}) != m_Snake.GetBody().end())
@@ -192,33 +147,25 @@ void Game::GenFruit()
 		{
 			choosing = true;
 		}
+		else if (std::find_if(m_Walls.begin(), m_Walls.end(), [c](Wall const& wall) {
+			return wall.GetPosition() == c;
+			}) != m_Walls.end())
+		{
+			choosing = true;
+		}
 	}
 	int score = scoreDist(gen);
 	m_Fruits.push_back(Fruit(c, score));
 }
 
-void Game::JudgeEat()
-{
-	Coord head = m_Snake.GetBody()[0];
-	auto it = std::find_if(m_Fruits.begin(), m_Fruits.end(), [head](Fruit f) {
-		return f.GetPosition() == head;
-		});
-	if (it != m_Fruits.end())
-	{
-		m_Snake.Grow(it->GetScore());
-		std::string t = "计分板: " + std::to_string(m_Snake.GetLength());
-		m_Fruits.erase(it);
-		m_Board.SetText(t);
-	}
-}
-
-void Game::JudgeDead()
+void ExtentionGame1::JudgeDead()
 {
 	static const int width = m_Border.GetWidth();
 	static const int height = m_Border.GetHeight();
 	Coord head = m_Snake.GetBody()[0];
 	Coord borderPosition = m_Border.GetPosition();
-	if (head.x - borderPosition.x == 0 || head.x - borderPosition.x == width - 1 
+
+	if (head.x - borderPosition.x == 0 || head.x - borderPosition.x == width - 1
 		|| head.y - borderPosition.y == 0 || head.y - borderPosition.y == height - 1)
 	{
 		m_Snake.Die();
@@ -226,13 +173,28 @@ void Game::JudgeDead()
 		m_State = GameState::Terminal;
 		m_LeaderBoard.Insert(m_Snake.GetLength());
 	}
-	else if (std::find_if(++m_Snake.GetBody().begin(), m_Snake.GetBody().end(), [head](Coord const& seg) {
-		return seg == head;
-		}) != m_Snake.GetBody().end())
+	else 
 	{
-		m_Snake.Die();
-		Render();
-		m_State = GameState::Terminal;
-		m_LeaderBoard.Insert(m_Snake.GetLength());
+		auto it = std::find_if(
+			++m_Snake.GetBody().begin(), m_Snake.GetBody().end(), [head](const Coord& seg) { 
+				return seg == head; 
+			});
+
+		if (it != m_Snake.GetBody().end()) {
+			m_Snake.CutOff(it);
+			std::string t = "计分板: " + std::to_string(m_Snake.GetBody().size());
+			m_Board.SetText(t);
+		}
+		else if (std::find_if(m_Walls.begin(), m_Walls.end(), [head](Wall const& wall) {
+			return wall.GetPosition() == head;
+			}) != m_Walls.end())
+		{
+			m_Snake.Die();
+			Render();
+			m_State = GameState::Terminal;
+			m_LeaderBoard.Insert(m_Snake.GetLength());
+		}
 	}
+		
+		
 }

@@ -16,7 +16,8 @@ workspace "GluttonousSnake"
 
         files
         {
-            "GluttonousSnake/Src/**.cpp"
+            "GluttonousSnake/Src/**.cpp",
+            "GluttonousSnake/Src/**.h"
         }
 
         includedirs

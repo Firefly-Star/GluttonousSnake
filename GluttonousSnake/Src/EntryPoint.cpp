@@ -4,6 +4,8 @@
 #include "Core/Tool.h"
 #include "Application.h"
 
+#include <vector>
+#include <algorithm>
 int main() {
     Application::Init();
 

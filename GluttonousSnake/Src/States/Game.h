@@ -20,14 +20,14 @@ public:
 	Game(int mapWidth, int mapHeight);
 	~Game(){}
 
-	void OnEvent(Event& event) override;
+	virtual void OnEvent(Event& event) override;
 	void Update() override;
 	void Render() override;
-private:
-	void GenFruit();
-	void JudgeEat();
-	void JudgeDead();
-private:
+protected:
+	virtual void GenFruit();
+	virtual void JudgeEat();
+	virtual void JudgeDead();
+protected:
 	Border m_Border;
 	Board m_Board;
 	Board m_Rule;

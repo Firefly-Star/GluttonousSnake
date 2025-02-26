@@ -19,12 +19,14 @@ public:
 	void Render() override;
 
 	void SetCycleLength(int length) { m_CycleLength = length; }
-	const std::vector<Coord>& GetBody() const { return m_OldBody; }
+	const std::vector<Coord>& GetBody() const { return m_Body; }
+	int GetLength() const { return m_Body.size() + m_WaitToGrow; }
 	void Grow(int growth) { m_WaitToGrow += growth; }
 	void Die() { m_Dead = true; }
+	void CutOff(std::vector<Coord>::const_iterator it);
 private:
-	std::vector<Coord> m_OldBody;
-	std::vector<Coord> m_NewBody;
+	std::vector<Coord> m_Body;
+	std::vector<Coord> m_BodyToBeErased;
 	Direction m_Direction;
 	Direction m_NextDirection;
 	int m_CycleLength;

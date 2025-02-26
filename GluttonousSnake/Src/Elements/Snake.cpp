@@ -3,6 +3,8 @@
 #include <iostream>
 #include <Windows.h>
 #include <optional>
+#include <algorithm>
+#include <iterator>
 
 inline static const Coord DirectionToCoord(Direction d)
 {
@@ -34,7 +36,7 @@ Snake::Snake(Coord position, Direction direction, int length)
 	Coord d = DirectionToCoord(direction);
 	for (int i = 0; i < length; ++i)
 	{
-		m_OldBody.push_back(position);
+		m_Body.push_back(position);
 		position.x -= d.x;
 		position.y -= d.y;
 	}
@@ -88,19 +90,19 @@ void Snake::Update()
 			m_TickCounter = 0;
 			m_Direction = m_NextDirection;
 			Coord next = DirectionToCoord(m_Direction);
-			Coord newHead = { m_OldBody[0].x + next.x, m_OldBody[0].y + next.y };
-			m_NewBody = m_OldBody;
-			m_NewBody.insert(m_NewBody.begin(), newHead);
+			Coord newHead = { m_Body[0].x + next.x, m_Body[0].y + next.y };
+			m_Body.insert(m_Body.begin(), newHead);
 			if (m_WaitToGrow > 0)
 			{
 				--m_WaitToGrow;
 			}
 			else
 			{
-				m_NewBody.pop_back();
+				m_BodyToBeErased.push_back(*(--m_Body.end()));
+				m_Body.pop_back();
 			}
 		}
-		m_CycleLength = max(3, 11 - static_cast<int>(m_OldBody.size() / 5));
+		m_CycleLength = max(3, 11 - static_cast<int>(m_Body.size() / 5));
 	}
 }
 
@@ -108,28 +110,34 @@ void Snake::Render()
 {
 	if (!m_Dead)
 	{
-		if (m_NewBody.empty())
-		{
-			m_NewBody = m_OldBody;
-		}
-		for (auto const& seg : m_OldBody)
+		for (auto const& seg : m_BodyToBeErased)
 		{
 			Print(" ", seg);
 		}
-		Print("头", m_NewBody[0]);
-		for (int i = 1; i < m_NewBody.size(); ++i)
+		m_BodyToBeErased.clear();
+		Print("头", m_Body[0]);
+		for (int i = 1; i < m_Body.size(); ++i)
 		{
-			Print("身", m_NewBody[i]);
+			Print("身", m_Body[i]);
 		}
-		m_OldBody = m_NewBody;
 	}
 	else
 	{
-		for (auto const& seg : m_OldBody)
+		for (auto const& seg : m_Body)
 		{
 			Print("死", seg);
 		}
 	}
+}
+
+void Snake::CutOff(std::vector<Coord>::const_iterator it)
+{
+	auto it2 = it;
+	for (; it != m_Body.end(); ++it)
+	{
+		m_BodyToBeErased.push_back(*it);
+	}
+	m_Body.erase(it2, m_Body.end());
 }
 
 void Snake::Turn(Direction d)
